@@ -27,57 +27,72 @@ namespace DearBot.Message
             user = arg_message.Author;
         }
 
-        public Task SendMessage()
+        public async Task SendMessage()
         {
             ComponentBuilder componentBuilder = new ComponentBuilder();
 
             EmbedBuilder embedBuilder = GetEmbedBuilder();
-            ButtonBuilder btb_clanJoin = new ButtonBuilder("가입 신청", DataContainerUtil.CreateStringData(message, guild, "join"), ButtonStyle.Primary, null, null, false);
-            ButtonBuilder btb_customer = new ButtonBuilder("손님", DataContainerUtil.CreateStringData(message, guild, "customer"), ButtonStyle.Secondary, null, null, false);
+
+            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "가입 신청", customId: DataContainerUtil.CreateStringData(message, guild, "join"), style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
+            ButtonBuilder btb_customer = new ButtonBuilder(label: "손님", customId: DataContainerUtil.CreateStringData(message, guild, "customer"), style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
 
             componentBuilder.WithButton(btb_clanJoin);
             componentBuilder.WithButton(btb_customer);
-            
-            return Discord.UserExtensions.SendMessageAsync(user, null, false, embedBuilder.Build(), null, null, componentBuilder.Build());
+
+            await Discord.UserExtensions.SendMessageAsync(user: user
+                                                          , text: null
+                                                          , isTTS: false
+                                                          , embed: embedBuilder.Build()
+                                                          , options: null
+                                                          , allowedMentions: null
+                                                          , components: componentBuilder.Build());
         }
 
         private EmbedBuilder GetEmbedBuilder()
         {
-            EmbedBuilder embedBuilder = new Discord.EmbedBuilder();
-            EmbedAuthorBuilder embedAuthorBuilder = new EmbedAuthorBuilder();
+            EmbedBuilder eBuilder = new Discord.EmbedBuilder();
 
-            StringBuilder sb_embedTitle = new StringBuilder();
-            StringBuilder sb_embedDesc = new StringBuilder();
-
-            /* Message Title */
-            sb_embedTitle.AppendFormat("[{0}] 서버 입장을 환영합니다!", guild.Name);
-
-            /* Message Description */
-            sb_embedDesc.AppendFormat("저희 [{0}] 클랜 서버는 {1} ({2})님이 어떠한 사유로 입장하셨는지 궁금해요!", guild.Name, user.Mention, user.Username);
-            sb_embedDesc.Append(Environment.NewLine);
-            sb_embedDesc.Append("원활한 유저 관리를 위해, 선택 부탁드립니다! :)");
-
-            /* Message Author */
-            if (guild.IconUrl != null)
-            {
-                embedAuthorBuilder.Name = string.Format("[{0}] 서버 입장을 환영합니다!", guild.Name);
-                embedAuthorBuilder.IconUrl = guild.IconUrl;
-            }
-
-            /* Set EmbedBuilder ----------------------------------------------------*/
             
-            embedBuilder.WithTitle(sb_embedTitle.ToString())
-                    .WithDescription(sb_embedDesc.ToString())
-                    .WithAuthor(new EmbedAuthorBuilder().WithUrl(guild.VanityURLCode)
-                                                        .WithName(guild.Name)
-                                                        .WithIconUrl(guild.IconUrl))
-                    .WithFooter(new EmbedFooterBuilder().WithIconUrl(guild.IconUrl)
-                                                        .WithText("원활한 유저 관리를 위해, 선택 부탁드립니다! :)"))
-                    .AddField(new EmbedFieldBuilder().WithName(string.Format("저희 [{0}] 클랜 서버는 {1}님이 어떠한 사유로 입장하셨는지 궁금해요!", guild.Name, user.Mention))
-                                                     .WithValue("원활한 유저 관리를 위해, 입장 목적을 알려주시면 감사하겠습니다! :)")
-                                                     .WithIsInline(false));
+            /* Message Author ----------------------------------------------------------------*/
+            EmbedAuthorBuilder authorBuilder = new EmbedAuthorBuilder();
+            authorBuilder.Name = string.Format("{0}", guild.Name);
+            authorBuilder.IconUrl = guild.IconUrl != null ? guild.IconUrl : string.Empty;
 
-            return embedBuilder;
+            /* Message Title -----------------------------------------------------------------*/
+            StringBuilder sb_embedTitle = new StringBuilder();
+            sb_embedTitle.AppendFormat("반가워요, {0}님!", user.Username);
+
+            /* Message Description -----------------------------------------------------------*/
+            StringBuilder sb_embedDesc = new StringBuilder();
+            sb_embedDesc.AppendFormat("저는 {0}의 비서, DearBot예요.", guild.Name).Append(Environment.NewLine);
+            sb_embedDesc.AppendFormat(@"저는 {0}[**{1}**]님이 어떠한 사유로 입장하셨는지 궁금해요!", user.Mention, user.Username).Append(Environment.NewLine);
+            sb_embedDesc.AppendFormat("{0}[**{1}**]님을 반갑게 맞이할 수 있도록, 선택 부탁드려요 :)", user.Mention, user.Username).Append(Environment.NewLine);
+
+            /* Message Fields ----------------------------------------------------------------*/
+            EmbedFieldBuilder fBuild_join = new EmbedFieldBuilder();
+            fBuild_join.WithName("[가입 신청]")
+                       .WithValue("클랜 가입을 위한 간단한 질문을 통해, 클랜 관리자에게 가입 신청 메시지가 자동 전송됩니다.")
+                       .WithIsInline(true);
+
+            EmbedFieldBuilder fBuild_cust = new EmbedFieldBuilder();
+            fBuild_cust.WithName("[손님]")
+                       .WithValue("일부 권한이 제한된 **손님** 권한이 자동 부여되며, 클랜 관리자에게 알림 메시지가 자동 전송됩니다.")
+                       .WithIsInline(true);
+
+            /* Message Footer ----------------------------------------------------------------*/
+            EmbedFooterBuilder footerBuilder = new EmbedFooterBuilder();
+            footerBuilder.WithIconUrl(guild.IconUrl)
+                         .WithText("Created at : " + message.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " Created by DearBot. Made by Dearest");
+
+            /* Set EmbedBuilder --------------------------------------------------------------*/
+            eBuilder.WithAuthor(authorBuilder)
+                    .WithTitle(sb_embedTitle.ToString())
+                    .WithDescription(sb_embedDesc.ToString())
+                    .AddField(fBuild_join)
+                    .AddField(fBuild_cust)
+                    .WithFooter(footerBuilder);
+
+            return eBuilder;
         }
 
         private EmbedFieldBuilder CreateFieldBuilder(string arg_context, object arg_value, bool arg_IsInline)

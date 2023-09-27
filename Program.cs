@@ -31,8 +31,10 @@ namespace DearBot
             /* Set Initailize Discord Client --------------------------------------------------------------------------------*/
             var _clientConfig = new DiscordSocketConfig
             {
-                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.All
-                , UseInteractionSnowflakeDate = false
+                UseInteractionSnowflakeDate = false
+                , GatewayIntents = GatewayIntents.AllUnprivileged
+                                 | GatewayIntents.MessageContent
+                                 | GatewayIntents.All
             };
             botClient = new DiscordSocketClient(_clientConfig);
             botConfig = new ConfigurationBuilder().SetBasePath(Environment.CurrentDirectory).AddJsonFile("config.json").Build();
@@ -46,8 +48,11 @@ namespace DearBot
 
             botClient.MessageReceived += _client_MessageReceived;
             botClient.ButtonExecuted += _client_ButtonExecuted;
-            /*---------------------------------------------------------------------------------------------------------------*/
+
+            botClient.SelectMenuExecuted += BotClient_SelectMenuExecuted;
+            /*----------------------------------------------------------------------------------------------------------------------*/
         }
+
 
         public async Task MainAsync()
         {
@@ -70,7 +75,7 @@ namespace DearBot
                 await arg.Channel.SendMessageAsync("world!");
             }
             else if (arg.Type == MessageType.GuildMemberJoin)
-            {
+            {   
                 MessageWelcome messageWelcome = new MessageWelcome(botClient, arg, guild);
                 await messageWelcome.SendMessage();
             }
@@ -91,7 +96,8 @@ namespace DearBot
                     MessageJoinClan messageJoinClan = new MessageJoinClan(botClient, arg);
 
                     await messageJoinClan.SendMessageToAdministrator(); // Send [User Selected 'Customer'] Message to Administrators
-                    await messageJoinClan.SendMessage();                // Send Welcome Message to User
+                    await messageJoinClan.SendMessageAsk();             // Send Ask Message about Date
+                    //await messageJoinClan.SendMessage();                // Send Welcome Message to User
                     break;
                 case "customer":
                     MessageCustomer messageCustomer = new MessageCustomer(botClient, arg);
@@ -103,6 +109,9 @@ namespace DearBot
             }
         }
 
-        
+        private Task BotClient_SelectMenuExecuted(SocketMessageComponent arg)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
