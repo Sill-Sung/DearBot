@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-namespace DearBot.DearLog
+namespace DearBot.LogUtil
 {
     public static class DearLog
     {

@@ -11,16 +11,15 @@ using DearBot.Data;
 
 namespace DearBot.Message
 {
-    internal class MessageWelcome
+    internal class MessageClear
     {
         private readonly DiscordSocketClient botClient;
-        
+
         SocketMessage message = null;
         SocketGuild guild = null;
         SocketUser user;
 
-
-        public MessageWelcome(DiscordSocketClient arg_bot, SocketMessage arg_message, SocketGuild arg_guild)
+        public MessageClear(DiscordSocketClient arg_bot, SocketMessage arg_message, SocketGuild arg_guild)
         {
             botClient = arg_bot;
             message = arg_message;
@@ -34,26 +33,25 @@ namespace DearBot.Message
 
             EmbedBuilder embedBuilder = GetEmbedBuilder();
 
-            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "가입 신청", customId: DataContainerUtil.CreateStringData(message, guild, "join"), style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
-            ButtonBuilder btb_customer = new ButtonBuilder(label: "손님", customId: DataContainerUtil.CreateStringData(message, guild, "customer"), style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
+            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "네", customId: DataContainerUtil.CreateStringData(message, guild, "yes"), style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
+            ButtonBuilder btb_customer = new ButtonBuilder(label: "아니요", customId: DataContainerUtil.CreateStringData(message, guild, "no"), style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
 
             componentBuilder.WithButton(btb_clanJoin);
             componentBuilder.WithButton(btb_customer);
 
-            await Discord.UserExtensions.SendMessageAsync(user: user
-                                                          , text: null
-                                                          , isTTS: false
-                                                          , embed: embedBuilder.Build()
-                                                          , options: null
-                                                          , allowedMentions: null
-                                                          , components: componentBuilder.Build());
+            await message.Channel.SendMessageAsync(text: null
+                                                   , isTTS: false
+                                                   , embed: embedBuilder.Build()
+                                                   , options: null
+                                                   , allowedMentions: null
+                                                   , components: componentBuilder.Build());
         }
 
         private EmbedBuilder GetEmbedBuilder()
         {
             EmbedBuilder eBuilder = new Discord.EmbedBuilder();
 
-            
+
             /* Message Author ----------------------------------------------------------------*/
             EmbedAuthorBuilder authorBuilder = new EmbedAuthorBuilder();
             authorBuilder.Name = string.Format("{0}", guild.Name);
@@ -65,20 +63,19 @@ namespace DearBot.Message
 
             /* Message Description -----------------------------------------------------------*/
             StringBuilder sb_embedDesc = new StringBuilder();
-            sb_embedDesc.Append($"저는 {guild.Name}의 비서, DearBot예요.").Append(Environment.NewLine);
-            sb_embedDesc.Append($@"저는 {user.Mention}[**{user.Username}**]님이 어떠한 사유로 입장하셨는지 궁금해요!").Append(Environment.NewLine);
-            sb_embedDesc.Append($"{user.Mention}[**{user.Username}**]님을 반갑게 맞이할 수 있도록, 선택 부탁드려요!").Append(Environment.NewLine);
+            sb_embedDesc.AppendFormat("저는 {0}의 비서, DearBot예요.", guild.Name).Append(Environment.NewLine);
+            sb_embedDesc.AppendFormat(@"저와의 모든 기록을 삭제하시겠어요?", user.Mention, user.Username).Append(Environment.NewLine);
 
             /* Message Fields ----------------------------------------------------------------*/
             EmbedFieldBuilder fBuild_join = new EmbedFieldBuilder();
-            fBuild_join.WithName("[가입 신청]")
-                       .WithValue("클랜 가입을 위한 간단한 질문을 통해, 클랜 관리자에게 가입 신청 메시지가 자동 전송됩니다.")
-                       .WithIsInline(true);
+            fBuild_join.WithName("[네]")
+                       .WithValue("전송한 모든 메시지가 삭제됩니다.")
+                       .WithIsInline(false);
 
             EmbedFieldBuilder fBuild_cust = new EmbedFieldBuilder();
-            fBuild_cust.WithName("[손님]")
-                       .WithValue("일부 권한이 제한된 **손님** 권한이 자동 부여되며, 클랜 관리자에게 알림 메시지가 자동 전송됩니다.")
-                       .WithIsInline(true);
+            fBuild_cust.WithName("[아니요]")
+                       .WithValue("현재 과정에서 빠져나옵니다.")
+                       .WithIsInline(false);
 
             /* Message Footer ----------------------------------------------------------------*/
             EmbedFooterBuilder footerBuilder = new EmbedFooterBuilder();
@@ -96,16 +93,30 @@ namespace DearBot.Message
             return eBuilder;
         }
 
-        private EmbedFieldBuilder CreateFieldBuilder(string arg_context, object arg_value, bool arg_IsInline)
+        public async Task ClearMessage(SocketMessageComponent messageComponent)
         {
-            EmbedFieldBuilder embedFieldBuilder = new EmbedFieldBuilder();
+            List<IMessage> messages = await messageComponent.Channel.GetMessagesAsync().Flatten().ToListAsync();
 
-            embedFieldBuilder.Name = arg_context;
-            embedFieldBuilder.IsInline = arg_IsInline;
-            embedFieldBuilder.Value = arg_value == null ? "" : arg_value;
+            foreach (IMessage message in messages)
+            {
+                await message.DeleteAsync();
+            }
 
-            return embedFieldBuilder;
+            if ((await messageComponent.Channel.GetMessagesAsync().Flatten().AnyAsync()) == true)
+                await ClearMessage(messageComponent);
         }
 
+        public async Task ClearDMMessage(SocketMessageComponent messageComponent)
+        {
+            List<IMessage> messages = await messageComponent.Channel.GetMessagesAsync().Flatten().Where(x=> x.Author.IsBot).ToListAsync();
+
+            foreach (IMessage message in messages)
+            {
+                await message.DeleteAsync();
+            }
+
+            if ((await messageComponent.Channel.GetMessagesAsync().Flatten().Where(x => x.Author.IsBot).AnyAsync()) == true)
+                await ClearDMMessage(messageComponent);
+        }
     }
 }

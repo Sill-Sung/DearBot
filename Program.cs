@@ -14,8 +14,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Json;
 
 using DearBot.Data;
-using DearBot.Log;
+using DearBot.LogUtil;
 using DearBot.Message;
+using DearBot.Modal;
 
 namespace DearBot
 {
@@ -48,11 +49,8 @@ namespace DearBot
 
             botClient.MessageReceived += _client_MessageReceived;
             botClient.ButtonExecuted += _client_ButtonExecuted;
-
-            botClient.SelectMenuExecuted += BotClient_SelectMenuExecuted;
             /*----------------------------------------------------------------------------------------------------------------------*/
         }
-
 
         public async Task MainAsync()
         {
@@ -64,25 +62,37 @@ namespace DearBot
 
         private async Task _client_MessageReceived(SocketMessage arg)
         {
-            SocketUser user = arg.Author;
-            SocketGuild guild = user.MutualGuilds.First();
-
             if (arg.Author.IsBot)
                 return;
 
-            if (arg.Content.Equals(".hello"))
+
+            SocketUser user = arg.Author;
+            SocketGuild guild = user.MutualGuilds.First();
+
+
+            if (arg.Content.Equals("hello"))
             {
                 await arg.Channel.SendMessageAsync("world!");
             }
-            else if (arg.Type == MessageType.GuildMemberJoin)
-            {   
+            else if (arg.Content.Equals("멈머"))
+            {
+                await arg.Channel.SendMessageAsync("멈멍!");
+            }
+            else if (arg.Type == MessageType.GuildMemberJoin || arg.Content.Equals("test"))
+            {
+                if (arg.Channel is SocketDMChannel)
+                    return;
+
                 MessageWelcome messageWelcome = new MessageWelcome(botClient, arg, guild);
                 await messageWelcome.SendMessage();
             }
-            if (arg.Content.Equals("test"))
+            else if (arg.Content.Equals("clear"))
             {
-                MessageWelcome messageWelcome = new MessageWelcome(botClient, arg, guild);
-                await messageWelcome.SendMessage();
+                if (arg.Channel is SocketDMChannel)
+                {
+                    MessageClear messageClear = new MessageClear(botClient, arg, guild);
+                    await messageClear.SendMessage();
+                }
             }
         }
 
@@ -93,11 +103,10 @@ namespace DearBot
             switch (data.Key)
             {
                 case "join":
-                    MessageJoinClan messageJoinClan = new MessageJoinClan(botClient, arg);
+                    ModalInterviewReservation modalInterview = new ModalInterviewReservation(botClient, arg);
 
-                    await messageJoinClan.SendMessageToAdministrator(); // Send [User Selected 'Customer'] Message to Administrators
-                    await messageJoinClan.SendMessageAsk();             // Send Ask Message about Date
-                    //await messageJoinClan.SendMessage();                // Send Welcome Message to User
+                    await modalInterview.ShowReservationModal();
+
                     break;
                 case "customer":
                     MessageCustomer messageCustomer = new MessageCustomer(botClient, arg);
@@ -106,12 +115,19 @@ namespace DearBot
                     await messageCustomer.SendMessage();                // Send Welcome Message to User
 
                     break;
-            }
-        }
+                case "yes":
+                    MessageClear messageClear = new MessageClear(botClient, arg.Message, data.Guild);
 
-        private Task BotClient_SelectMenuExecuted(SocketMessageComponent arg)
-        {
-            return Task.CompletedTask;
+                    if (arg.Message.Channel is SocketDMChannel)
+                        await messageClear.ClearDMMessage(arg);
+                    else
+                        await messageClear.ClearMessage(arg);
+
+                    break;
+                case "no":
+                    await arg.Message.DeleteAsync();   // Delete Previus Message (Select Purpose)
+                    break;
+            }
         }
     }
 }
