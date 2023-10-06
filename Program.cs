@@ -64,35 +64,33 @@ namespace DearBot
         {
             if (arg.Author.IsBot)
                 return;
-
-
+            
             SocketUser user = arg.Author;
-            SocketGuild guild = user.MutualGuilds.First();
+            SocketGuild guild = user.MutualGuilds.Where(x => x.Channels.Count(x => x.Id == arg.Channel.Id) > 0).First();
 
-
-            if (arg.Content.Equals("hello"))
+            if (arg.Content.Equals("..hello"))
             {
                 await arg.Channel.SendMessageAsync("world!");
             }
-            else if (arg.Content.Equals("멈머"))
+            else if (arg.Content.Equals("..멈머"))
             {
                 await arg.Channel.SendMessageAsync("멈멍!");
             }
-            else if (arg.Type == MessageType.GuildMemberJoin || arg.Content.Equals("test"))
+            else if (arg.Content.Equals("..냥냐"))
+            {
+                await arg.Channel.SendMessageAsync("땡깡!");
+            }
+            else if (arg.Content.Equals("..퇴근시켜줘"))
+            {
+                await arg.Channel.SendMessageAsync("안돼. 못 가. 못 보내줘.");
+            }
+            else if (arg.Type == MessageType.GuildMemberJoin || arg.Content.Equals("..test") || arg.Content.Equals("..join"))
             {
                 if (arg.Channel is SocketDMChannel)
                     return;
 
                 MessageWelcome messageWelcome = new MessageWelcome(botClient, arg, guild);
                 await messageWelcome.SendMessage();
-            }
-            else if (arg.Content.Equals("clear"))
-            {
-                if (arg.Channel is SocketDMChannel)
-                {
-                    MessageClear messageClear = new MessageClear(botClient, arg, guild);
-                    await messageClear.SendMessage();
-                }
             }
         }
 
