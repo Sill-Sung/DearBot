@@ -1,22 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 using Discord;
 using Discord.Commands;
-using Discord.Net;
-using Discord.Webhook;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 using DearBot.Data;
 using DearBot.LogUtil;
 using DearBot.Message;
 using DearBot.Modal;
+using DearBot.Services;
 
 namespace DearBot
 {
@@ -32,7 +29,8 @@ namespace DearBot
             /* Set Initailize Discord Client --------------------------------------------------------------------------------*/
             var _clientConfig = new DiscordSocketConfig
             {
-                UseInteractionSnowflakeDate = false
+                TotalShards = 5
+                , UseInteractionSnowflakeDate = false
                 , GatewayIntents = GatewayIntents.AllUnprivileged
                                  | GatewayIntents.MessageContent
                                  | GatewayIntents.All
@@ -54,11 +52,31 @@ namespace DearBot
 
         public async Task MainAsync()
         {
+            var config = new DiscordSocketConfig
+            {
+                TotalShards = 2
+                , UseInteractionSnowflakeDate = false
+                , GatewayIntents = GatewayIntents.AllUnprivileged
+                                 | GatewayIntents.MessageContent
+                                 | GatewayIntents.All
+            };
+
+
+
             await botClient.LoginAsync(TokenType.Bot, botConfig["Token"]);
             await botClient.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
         }
+
+        private ServiceProvider ConfigureServices(DiscordSocketConfig config)
+            => new ServiceCollection()
+                .AddSingleton(new DiscordShardedClient(config))
+                .AddSingleton<CommandService>()
+                .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
+                .AddSingleton<CommandHandlingService>()
+                .AddSingleton<InteractionHandlingService>()
+                .BuildServiceProvider();
 
         private async Task _client_MessageReceived(SocketMessage arg)
         {
@@ -92,6 +110,7 @@ namespace DearBot
                 MessageWelcome messageWelcome = new MessageWelcome(botClient, arg, guild);
                 await messageWelcome.SendMessage();
             }
+
         }
 
         private async Task _client_ButtonExecuted(SocketMessageComponent arg)
