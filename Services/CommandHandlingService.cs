@@ -10,44 +10,41 @@ namespace DearBot.Services
 {
     public class CommandHandlingService
     {
-        private readonly CommandService _commands;
-        private readonly DiscordShardedClient _discord;
-        private readonly IServiceProvider _services;
+        private readonly CommandService _commandServices;
+        private readonly DiscordShardedClient _shardClient;
+        private readonly IServiceProvider _provider;
 
-        public CommandHandlingService(IServiceProvider services)
+        public CommandHandlingService(IServiceProvider provider)
         {
-            _commands = services.GetRequiredService<CommandService>();
-            _discord = services.GetRequiredService<DiscordShardedClient>();
-            _services = services;
+            _commandServices = provider.GetRequiredService<CommandService>();
+            _shardClient = provider.GetRequiredService<DiscordShardedClient>();
+            _provider = provider;
 
-            _commands.CommandExecuted += CommandExecutedAsync;
-            _commands.Log += LogAsync;
-            _discord.MessageReceived += MessageReceivedAsync;
+            _commandServices.CommandExecuted += CommandExecutedAsync;
+            _commandServices.Log += LogAsync;
+
+            _shardClient.MessageReceived += MessageReceivedAsync;
         }
 
         public async Task InitializeAsync()
         {
-            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+            await _commandServices.AddModulesAsync(Assembly.GetEntryAssembly(), _provider);
         }
 
-        public async Task MessageReceivedAsync(SocketMessage rawMessage)
+        public async Task MessageReceivedAsync(SocketMessage message)
         {
-            // Ignore system messages, or messages from other bots
-            if (rawMessage is not SocketUserMessage message)
-                return;
-            if (message.Source != MessageSource.User)
+            if (message.Author.IsBot) return;
+
+            int commandPos = 0;
+
+            SocketUserMessage userMessage = message as SocketUserMessage;
+
+            if (userMessage == null || userMessage.HasStringPrefix("..", ref commandPos) == false || userMessage.HasMentionPrefix(_shardClient.CurrentUser, ref commandPos))
                 return;
 
-            // This value holds the offset where the prefix ends
-            var argPos = 0;
-            if (!message.HasMentionPrefix(_discord.CurrentUser, ref argPos))
-                return;
-
-            // A new kind of command context, ShardedCommandContext can be utilized with the commands framework
-            var context = new ShardedCommandContext(_discord, message);
-            await _commands.ExecuteAsync(context, argPos, _services);
+            await _commandServices.ExecuteAsync(context: new ShardedCommandContext(_shardClient, userMessage), argPos: commandPos, services: null);
         }
-
+        
         public async Task CommandExecutedAsync(Optional<CommandInfo> command, ICommandContext context, IResult result)
         {
             // command is unspecified when there was a search failure (command not found); we don't care about these errors

@@ -13,11 +13,11 @@ namespace DearBot.Message
 {
     internal class MessageCustomer
     {
-        private readonly DiscordSocketClient botClient = null;
+        private readonly DiscordShardedClient botClient = null;
         private readonly SocketMessageComponent messageComponent = null;
         private readonly DataContainer dataContainer = null;
 
-        public MessageCustomer(DiscordSocketClient arg_bot, SocketMessageComponent arg_messageComponent)
+        public MessageCustomer(DiscordShardedClient arg_bot, SocketMessageComponent arg_messageComponent)
         {
             botClient = arg_bot;
             messageComponent = arg_messageComponent;

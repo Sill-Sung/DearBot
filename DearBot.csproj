@@ -8,6 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Modal\ModalInterviewReservation.cs" />
+    <Compile Remove="Modules\DoUserCheck .cs" />
+    <Compile Remove="Modules\ExampleEnum.cs" />
+    <Compile Remove="Modules\RequireOwnerAttribute .cs" />
+    <Compile Remove="Services\InteractionHandlingService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Discord.Net" Version="3.12.0" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.12.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />

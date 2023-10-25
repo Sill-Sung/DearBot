@@ -13,13 +13,13 @@ namespace DearBot.Message
 {
     internal class MessageClear
     {
-        private readonly DiscordSocketClient botClient;
+        private readonly DiscordShardedClient botClient;
 
         SocketMessage message = null;
         SocketGuild guild = null;
         SocketUser user;
 
-        public MessageClear(DiscordSocketClient arg_bot, SocketMessage arg_message, SocketGuild arg_guild)
+        public MessageClear(DiscordShardedClient arg_bot, SocketMessage arg_message, SocketGuild arg_guild)
         {
             botClient = arg_bot;
             message = arg_message;
@@ -33,8 +33,8 @@ namespace DearBot.Message
 
             EmbedBuilder embedBuilder = GetEmbedBuilder();
 
-            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "네", customId: DataContainerUtil.CreateStringData(message, guild, "yes"), style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
-            ButtonBuilder btb_customer = new ButtonBuilder(label: "아니요", customId: DataContainerUtil.CreateStringData(message, guild, "no"), style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
+            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "네", customId: "clear_yes", style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
+            ButtonBuilder btb_customer = new ButtonBuilder(label: "아니요", customId: "clear_no", style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
 
             componentBuilder.WithButton(btb_clanJoin);
             componentBuilder.WithButton(btb_customer);
@@ -50,7 +50,6 @@ namespace DearBot.Message
         private EmbedBuilder GetEmbedBuilder()
         {
             EmbedBuilder eBuilder = new Discord.EmbedBuilder();
-
 
             /* Message Author ----------------------------------------------------------------*/
             EmbedAuthorBuilder authorBuilder = new EmbedAuthorBuilder();

@@ -1,150 +1,100 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
-
-using Discord;
-using Discord.Commands;
-using Discord.Interactions;
-using Discord.WebSocket;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using DearBot.Data;
-using DearBot.LogUtil;
-using DearBot.Message;
-using DearBot.Modal;
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
+using Discord.Interactions;
+
 using DearBot.Services;
 
 namespace DearBot
 {
     class Program
     {
-        private readonly DiscordSocketClient botClient;
-        private readonly IConfiguration botConfig;
+        IConfiguration _appConfig;
+        private readonly HttpClient _webClient;
+        private readonly string? _apiKey;
+        private readonly string? _botToken;
+        private readonly DiscordSocketConfig _socketConfig = new DiscordSocketConfig
+        {
+            TotalShards = 1,
+            MessageCacheSize = 100,
+            AlwaysDownloadUsers = true,
+            UseInteractionSnowflakeDate = false,
+            GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.All
+        };
 
-        private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+        private static void Main(string[] args) => new Program()
+                                                        .MainAsync()
+                                                        .GetAwaiter()
+                                                        .GetResult();
 
         public Program()
         {
-            /* Set Initailize Discord Client --------------------------------------------------------------------------------*/
-            var _clientConfig = new DiscordSocketConfig
-            {
-                TotalShards = 5
-                , UseInteractionSnowflakeDate = false
-                , GatewayIntents = GatewayIntents.AllUnprivileged
-                                 | GatewayIntents.MessageContent
-                                 | GatewayIntents.All
-            };
-            botClient = new DiscordSocketClient(_clientConfig);
-            botConfig = new ConfigurationBuilder().SetBasePath(Environment.CurrentDirectory).AddJsonFile("config.json").Build();
-            /*---------------------------------------------------------------------------------------------------------------*/
+            _appConfig = new ConfigurationBuilder().SetBasePath(Environment.CurrentDirectory).AddJsonFile("config.json").Build();
+            _apiKey = _appConfig.GetSection("X-API-Key").Value;
+            _botToken = _appConfig.GetSection("Token").Value;
 
-
-            /* Set Event Handler for Discord Client --------------------------------------------------------------------------------*/
-            DearLog.SetSocketClient(botClient);
-            botClient.Log += DearLog.GeneralLog;
-            botClient.Ready += DearLog.Ready;
-
-            botClient.MessageReceived += _client_MessageReceived;
-            botClient.ButtonExecuted += _client_ButtonExecuted;
-            /*----------------------------------------------------------------------------------------------------------------------*/
+            /* Set Web Client ----------------------------------------------------------------------------------------------------*/
+            _webClient = new HttpClient();
+            _webClient.DefaultRequestHeaders.Add("X-API-Key", _apiKey);
         }
 
         public async Task MainAsync()
         {
-            var config = new DiscordSocketConfig
+            IConfiguration config = new ConfigurationBuilder()
+                .AddJsonFile("config.json", optional: true)
+                .Build();
+
+            using (var services = ConfigureServices(config))
             {
-                TotalShards = 2
-                , UseInteractionSnowflakeDate = false
-                , GatewayIntents = GatewayIntents.AllUnprivileged
-                                 | GatewayIntents.MessageContent
-                                 | GatewayIntents.All
-            };
+                DiscordShardedClient shardClients = services.GetRequiredService<DiscordShardedClient>();
 
+                await services.GetRequiredService<CommandHandlingService>().InitializeAsync();
+                await services.GetRequiredService<InteractionHandler>().InitializeAsync();
 
+                shardClients.ShardReady += ShardClients_ShardReady;
+                shardClients.Log += ShardClients_Log;
 
-            await botClient.LoginAsync(TokenType.Bot, botConfig["Token"]);
-            await botClient.StartAsync();
+                //DearLog.SetSocketClient(shardClients, commandServices);
 
-            await Task.Delay(Timeout.Infinite);
+                await shardClients.LoginAsync(TokenType.Bot, _botToken);
+                await shardClients.StartAsync();
+
+                CommandService commandServices = services.GetRequiredService<CommandService>();
+                InteractionService interactionServices = services.GetRequiredService<InteractionService>();
+
+                await commandServices.AddModulesAsync(assembly: this.GetType().Assembly, services: null);
+
+                await Task.Delay(Timeout.Infinite);
+            }
         }
 
-        private ServiceProvider ConfigureServices(DiscordSocketConfig config)
-            => new ServiceCollection()
-                .AddSingleton(new DiscordShardedClient(config))
-                .AddSingleton<CommandService>()
-                .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
-                .AddSingleton<CommandHandlingService>()
-                .AddSingleton<InteractionHandlingService>()
-                .BuildServiceProvider();
+        private ServiceProvider ConfigureServices(IConfiguration config) => new ServiceCollection()
+                                                        .AddSingleton(config)
+                                                        .AddSingleton(new DiscordShardedClient(_socketConfig))
+                                                        .AddSingleton<CommandService>()
+                                                        .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
+                                                        .AddSingleton<CommandHandlingService>()
+                                                        .AddSingleton<InteractionHandler>()
+                                                        .BuildServiceProvider();
 
-        private async Task _client_MessageReceived(SocketMessage arg)
+        private Task ShardClients_Log(LogMessage log)
         {
-            if (arg.Author.IsBot)
-                return;
-            
-            SocketUser user = arg.Author;
-            SocketGuild guild = user.MutualGuilds.Where(x => x.Channels.Count(x => x.Id == arg.Channel.Id) > 0).First();
-
-            if (arg.Content.Equals("..hello"))
-            {
-                await arg.Channel.SendMessageAsync("world!");
-            }
-            else if (arg.Content.Equals("..멈머"))
-            {
-                await arg.Channel.SendMessageAsync("멈멍!");
-            }
-            else if (arg.Content.Equals("..냥냐"))
-            {
-                await arg.Channel.SendMessageAsync("땡깡!");
-            }
-            else if (arg.Content.Equals("..퇴근시켜줘"))
-            {
-                await arg.Channel.SendMessageAsync("안돼. 못 가. 못 보내줘.");
-            }
-            else if (arg.Type == MessageType.GuildMemberJoin || arg.Content.Equals("..test") || arg.Content.Equals("..join"))
-            {
-                if (arg.Channel is SocketDMChannel)
-                    return;
-
-                MessageWelcome messageWelcome = new MessageWelcome(botClient, arg, guild);
-                await messageWelcome.SendMessage();
-            }
-
+            Console.WriteLine(log.ToString());
+            return Task.CompletedTask;
         }
 
-        private async Task _client_ButtonExecuted(SocketMessageComponent arg)
+        private Task ShardClients_ShardReady(DiscordSocketClient client)
         {
-            DataContainer data = new DataContainer(botClient, arg);
+            Console.WriteLine($"{client.CurrentUser} is connected!");
 
-            switch (data.Key)
-            {
-                case "join":
-                    ModalInterviewReservation modalInterview = new ModalInterviewReservation(botClient, arg);
-
-                    await modalInterview.ShowReservationModal();
-
-                    break;
-                case "customer":
-                    MessageCustomer messageCustomer = new MessageCustomer(botClient, arg);
-
-                    await messageCustomer.SendMessageToAdministrator(); // Send [User Selected 'Customer'] Message to Administrators
-                    await messageCustomer.SendMessage();                // Send Welcome Message to User
-
-                    break;
-                case "yes":
-                    MessageClear messageClear = new MessageClear(botClient, arg.Message, data.Guild);
-
-                    if (arg.Message.Channel is SocketDMChannel)
-                        await messageClear.ClearDMMessage(arg);
-                    else
-                        await messageClear.ClearMessage(arg);
-
-                    break;
-                case "no":
-                    await arg.Message.DeleteAsync();   // Delete Previus Message (Select Purpose)
-                    break;
-            }
+            return Task.CompletedTask;
         }
     }
 }

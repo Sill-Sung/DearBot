@@ -13,12 +13,12 @@ namespace DearBot.Message
 {
     internal class MessageJoinClan
     {
-        private readonly DiscordSocketClient botClient = null;
+        private readonly DiscordShardedClient botClient = null;
         private readonly SocketMessageComponent messageComponent = null;
         private readonly DataContainer dataContainer = null;
 
 
-        public MessageJoinClan(DiscordSocketClient arg_bot, SocketMessageComponent arg_messageComponent)
+        public MessageJoinClan(DiscordShardedClient arg_bot, SocketMessageComponent arg_messageComponent)
         {
             this.botClient = arg_bot;
 

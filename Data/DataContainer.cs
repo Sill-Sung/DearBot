@@ -11,7 +11,7 @@ namespace DearBot.Data
     internal class DataContainer
     {
         Dictionary<string, string>? dic_socketData = null;
-        DiscordSocketClient? bot = null;
+        DiscordShardedClient? bot = null;
 
         SocketUser? user = null;
         SocketGuild? guild = null;
@@ -38,7 +38,7 @@ namespace DearBot.Data
             get { return key; }
         }
 
-        public DataContainer(DiscordSocketClient bot, SocketMessageComponent socketMessageComponent)
+        public DataContainer(DiscordShardedClient bot, SocketMessageComponent socketMessageComponent)
         {
             dic_socketData = socketMessageComponent.Data.CustomId.Split(Convert.ToChar(06), StringSplitOptions.RemoveEmptyEntries).Select(x => x.Split("=")).ToDictionary(x => x[0], x => x[1]);
 
@@ -63,7 +63,7 @@ namespace DearBot.Data
             }
         }
 
-        public DataContainer(DiscordSocketClient bot, SocketModal socketModal)
+        public DataContainer(DiscordShardedClient bot, SocketModal socketModal)
         {
             dic_socketData = socketModal.Data.CustomId.Split(Convert.ToChar(06), StringSplitOptions.RemoveEmptyEntries).Select(x => x.Split("=")).ToDictionary(x => x[0], x => x[1]);
 

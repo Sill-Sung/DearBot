@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Discord;
+using Discord.Utils;
 using Discord.WebSocket;
 using Discord.Interactions;
 
@@ -12,28 +13,29 @@ using DearBot.Data;
 
 namespace DearBot.Modal
 {
-    internal class ModalInterviewReservation
-    {        
-        private readonly ShardedInteractionContext<SocketMessageComponent> _interactionCnt;
+    public class InterviewModal : IModal
+    {
+        public string Title => "면접 일자";
 
-        public ModalInterviewReservation(ShardedInteractionContext<SocketMessageComponent> interactionContext)
+        [RequiredInput(true)]
+        [InputLabel("면접 가능 일자")]        
+        [ModalTextInput(customId:"day", style: TextInputStyle.Short, placeholder: "오늘 오후 8시 / 아무때나 / ...", maxLength: 100)]
+        public string Day { get; set; }
+
+        [RequiredInput(false)]
+        [InputLabel("비고")]
+        [ModalTextInput("comment", style: TextInputStyle.Paragraph, placeholder: "비고", maxLength: 500)]
+        public string Comment { get; set; }
+
+        public async Task ResponseInterview(ShardedInteractionContext context, MessageInfo messageInfo)
         {
-            _interactionCnt = interactionContext;
-        }
-
-        private Task ModalSubmitted(SocketModal arg_socketModal)
-        {
-            arg_socketModal.RespondAsync();             // Delete Previus Message (Select Purpose)
-            SendMessageToAdministrator(arg_socketModal);
-            arg_socketModal.Message.DeleteAsync();      // Download All Users in Guild
-
-            List<SocketMessageComponentData> data = arg_socketModal.Data.Components.ToList();
             EmbedBuilder embed = new EmbedBuilder();
+            SocketGuild guild = context.Client.GetGuild(messageInfo.GuildID);
 
             /* Message Author ----------------------------------------------------------------*/
             EmbedAuthorBuilder authorBuilder = new EmbedAuthorBuilder();
-            authorBuilder.Name = string.Format("{0}", _interactionCnt.Guild.Name);
-            authorBuilder.IconUrl = _interactionCnt.Guild.IconUrl != null ? _interactionCnt.Guild.IconUrl : string.Empty;
+            authorBuilder.Name = string.Format("{0}", guild.Name);
+            authorBuilder.IconUrl = guild.IconUrl != null ? guild.IconUrl : string.Empty;
 
             /* Message Title -----------------------------------------------------------------*/
             StringBuilder sb_embedTitle = new StringBuilder();
@@ -41,17 +43,17 @@ namespace DearBot.Modal
 
             /* Message Description -----------------------------------------------------------*/
             StringBuilder sb_embedDesc = new StringBuilder();
-            sb_embedDesc.Append($"정상적으로 {_interactionCnt.User.Mention}({_interactionCnt.User.Username})님이 입력하신 내용을 관리자 분들께 전달했어요!").Append(Environment.NewLine);
+            sb_embedDesc.Append($"정상적으로 {context.User.Mention}({context.User.Username})님이 입력하신 내용을 관리자 분들께 전달했어요!").Append(Environment.NewLine);
             sb_embedDesc.Append($"별도의 문의 사항이나, 변경 사항이 있다면 언제든지 클랜 관리자분들께 DM 보내시면 됩니다!").Append(Environment.NewLine).Append(Environment.NewLine);
             sb_embedDesc.Append("< 관리자 목록 >").Append(Environment.NewLine);
 
             Dictionary<string, string> dic_adminUsers = new Dictionary<string, string>();
-            List<SocketRole> adminRoles = _interactionCnt.Guild.Roles.Where(x => x.Permissions.Administrator).ToList();
+            List<SocketRole> adminRoles = guild.Roles.Where(x => x.Permissions.Administrator).ToList();
 
-            dic_adminUsers.Add(_interactionCnt.Guild.Owner.Mention, _interactionCnt.Guild.Owner.Username);
+            dic_adminUsers.Add(guild.Owner.Mention, guild.Owner.Username);
             foreach (SocketRole role in adminRoles)
             {
-                foreach(SocketUser user in role.Members)
+                foreach (SocketUser user in role.Members)
                 {
                     if (!dic_adminUsers.ContainsKey(user.Mention) && user.IsBot == false)
                         dic_adminUsers.Add(user.Mention, user.Username);
@@ -63,18 +65,18 @@ namespace DearBot.Modal
             /* Message Fields ----------------------------------------------------------------*/
             EmbedFieldBuilder fBuild_day = new EmbedFieldBuilder();
             fBuild_day.WithName("[면접 가능 시간]")
-                       .WithValue(data.First(x => x.CustomId == "join-reservation-day").Value)
+                       .WithValue(Day)
                        .WithIsInline(false);
 
             EmbedFieldBuilder fBuild_comment = new EmbedFieldBuilder();
             fBuild_comment.WithName("[면접 참고 사항]")
-                       .WithValue(data.First(x => x.CustomId == "join-reservation-comment").Value)
+                       .WithValue(Comment)
                        .WithIsInline(false);
 
             /* Message Footer ----------------------------------------------------------------*/
             EmbedFooterBuilder footerBuilder = new EmbedFooterBuilder();
-            footerBuilder.WithIconUrl(_interactionCnt.Guild.IconUrl)
-                         .WithText("Created at : " + arg_socketModal.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " Created by DearBot. Made by Dearest");
+            footerBuilder.WithIconUrl(guild.IconUrl)
+                         .WithText("Created at : " + context.Interaction.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " Created by DearBot. Made by Dearest");
 
             /* Set EmbedBuilder --------------------------------------------------------------*/
             embed.WithAuthor(authorBuilder)
@@ -84,51 +86,24 @@ namespace DearBot.Modal
                     .AddField(fBuild_comment)
                     .WithFooter(footerBuilder);
 
-            return Discord.UserExtensions.SendMessageAsync(user: arg_socketModal.User
-                                                           , text: string.Empty
-                                                           , isTTS: false
-                                                           , embed: embed.Build());
+            await Discord.UserExtensions.SendMessageAsync(user: context.User
+                                                     , text: string.Empty
+                                                     , isTTS: false
+                                                     , embed: embed.Build()
+                                                     , options: null
+                                                     , allowedMentions: null
+                                                     , components: null);
         }
 
-        public async Task ShowReservationModal()
+        public async Task AnnounceToGuildAdmin(ShardedInteractionContext context, MessageInfo messageInfo)
         {
-            ModalBuilder modal = new ModalBuilder();
-            TextInputBuilder text_reserve_day = new TextInputBuilder();
-            TextInputBuilder text_reserve_comment = new TextInputBuilder();
-
-            text_reserve_day.WithLabel("면접 가능 일자");
-            text_reserve_day.WithPlaceholder("오늘 오후 8시 / 아무때나 / ...");
-            text_reserve_day.WithCustomId("join-reservation-day");
-            text_reserve_day.WithStyle(TextInputStyle.Short);
-            text_reserve_day.WithMaxLength(400);
-
-            text_reserve_comment.WithLabel("면접 참고 사항");
-            text_reserve_comment.WithPlaceholder("비고");
-            text_reserve_comment.WithCustomId("join-reservation-comment");
-            text_reserve_comment.WithStyle(TextInputStyle.Paragraph);
-            text_reserve_comment.WithMaxLength(1000);
-
-
-            modal.WithTitle("면접 일자");
-            modal.WithCustomId("join-reservation-interview");
-            modal.AddTextInput(text_reserve_day);
-            modal.AddTextInput(text_reserve_comment);
-            
-            await _interactionCnt.Interaction.RespondWithModalAsync(modal.Build());
-        }
-        
-        public void SendMessageToAdministrator(SocketModal arg_socketModal)
-        {
-            _interactionCnt.Guild.DownloadUsersAsync(); // Download All Users in Guild
-
-            List<SocketMessageComponentData> data = arg_socketModal.Data.Components.ToList();
-
+            SocketGuild guild = context.Client.GetGuild(messageInfo.GuildID);
             EmbedBuilder embed = new EmbedBuilder();
-            
+
             // Message Author ----------------------------------------------------------------
             EmbedAuthorBuilder authorBuilder = new EmbedAuthorBuilder();
-            authorBuilder.Name = string.Format("{0}", _interactionCnt.Guild.Name);
-            authorBuilder.IconUrl = _interactionCnt.Guild.IconUrl != null ? _interactionCnt.Guild.IconUrl : string.Empty;
+            authorBuilder.Name = string.Format("{0}", guild.Name);
+            authorBuilder.IconUrl = guild.IconUrl != null ? guild.IconUrl : string.Empty;
 
             // Message Title -----------------------------------------------------------------
             StringBuilder sb_embedTitle = new StringBuilder();
@@ -136,23 +111,23 @@ namespace DearBot.Modal
 
             // Message Description -----------------------------------------------------------
             StringBuilder sb_embedDesc = new StringBuilder();
-            sb_embedDesc.Append($"{_interactionCnt.User.Mention}({_interactionCnt.User.Username})님이 클랜 가입 신청하셨습니다.");
+            sb_embedDesc.Append($"{context.User.Mention}({context.User.Username})님이 클랜 가입 신청하셨습니다.");
 
             // Message Fields ----------------------------------------------------------------
             EmbedFieldBuilder fBuild_day = new EmbedFieldBuilder();
             fBuild_day.WithName("[면접 가능 시간]")
-                       .WithValue(data.First(x => x.CustomId == "join-reservation-day").Value)
+                       .WithValue(Day)
                        .WithIsInline(false);
 
             EmbedFieldBuilder fBuild_comment = new EmbedFieldBuilder();
             fBuild_comment.WithName("[면접 참고 사항]")
-                       .WithValue(data.First(x => x.CustomId == "join-reservation-comment").Value)
+                       .WithValue(Comment)
                        .WithIsInline(false);
 
             // Message Footer ----------------------------------------------------------------
             EmbedFooterBuilder footerBuilder = new EmbedFooterBuilder();
-            footerBuilder.WithIconUrl(_interactionCnt.Guild.IconUrl)
-                         .WithText("Created at : " + arg_socketModal.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " Created by DearBot. Made by Dearest");
+            footerBuilder.WithIconUrl(guild.IconUrl)
+                         .WithText("Created at : " + context.Interaction.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") + " Created by DearBot. Made by Dearest");
 
             // Set EmbedBuilder --------------------------------------------------------------
             embed.WithAuthor(authorBuilder)
@@ -163,10 +138,20 @@ namespace DearBot.Modal
                     .WithFooter(footerBuilder);
 
             // Send message to Only Guild's [ Owner & Administrator ] ---------------------------------------------------------------------------------------------------------------
-            Dictionary<string, string> dic_adminUsers = new Dictionary<string, string>();
-            List<SocketRole> adminRoles = _interactionCnt.Guild.Roles.Where(x => x.Permissions.Administrator).ToList();
+            await guild.DownloadUsersAsync();
 
-            dic_adminUsers.Add(_interactionCnt.Guild.Owner.Mention, _interactionCnt.Guild.Owner.Username);
+            Dictionary<string, string> dic_adminUsers = new Dictionary<string, string>();
+            List<SocketRole> adminRoles = guild.Roles.Where(x => x.Permissions.Administrator).ToList();
+
+            dic_adminUsers.Add(guild.Owner.Mention, guild.Owner.Username);
+            Discord.UserExtensions.SendMessageAsync(user: guild.Owner
+                                                                , text: string.Empty
+                                                                , isTTS: false
+                                                                , embed: embed.Build()
+                                                                , options: null
+                                                                , allowedMentions: null
+                                                                , components: null).Wait();
+
             foreach (SocketRole role in adminRoles)
             {
                 foreach (SocketUser user in role.Members)

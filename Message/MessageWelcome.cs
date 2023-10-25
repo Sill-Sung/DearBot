@@ -13,14 +13,13 @@ namespace DearBot.Message
 {
     internal class MessageWelcome
     {
-        private readonly DiscordSocketClient botClient;
+        private readonly DiscordShardedClient botClient;
         
         SocketMessage message = null;
         SocketGuild guild = null;
         SocketUser user;
 
-
-        public MessageWelcome(DiscordSocketClient arg_bot, SocketMessage arg_message, SocketGuild arg_guild)
+        public MessageWelcome(DiscordShardedClient arg_bot, SocketMessage arg_message, SocketGuild arg_guild)
         {
             botClient = arg_bot;
             message = arg_message;
@@ -31,29 +30,31 @@ namespace DearBot.Message
         public async Task SendMessage()
         {
             ComponentBuilder componentBuilder = new ComponentBuilder();
-
+            
             EmbedBuilder embedBuilder = GetEmbedBuilder();
-
-            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "가입 신청", customId: DataContainerUtil.CreateStringData(message, guild, "join"), style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
-            ButtonBuilder btb_customer = new ButtonBuilder(label: "손님", customId: DataContainerUtil.CreateStringData(message, guild, "customer"), style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
-
+            
+            ButtonBuilder btb_clanJoin = new ButtonBuilder(label: "가입 신청", customId: "join", style: ButtonStyle.Primary, url: null, emote: null, isDisabled: false);
+            ButtonBuilder btb_customer = new ButtonBuilder(label: "손님", customId: "customer", style: ButtonStyle.Secondary, url: null, emote: null, isDisabled: false);
+            
             componentBuilder.WithButton(btb_clanJoin);
             componentBuilder.WithButton(btb_customer);
 
-            await Discord.UserExtensions.SendMessageAsync(user: user
+            IUserMessage result = await Discord.UserExtensions.SendMessageAsync(user: user
                                                           , text: null
                                                           , isTTS: false
                                                           , embed: embedBuilder.Build()
                                                           , options: null
                                                           , allowedMentions: null
                                                           , components: componentBuilder.Build());
+            
+            MessageList.Messages.Add(new MessageInfo(message.Id, guild.Id, user.Id, null, message.Id));
+            MessageList.Messages.Add(new MessageInfo(result.Id, guild.Id, user.Id, message.Id, message.Id));
         }
 
         private EmbedBuilder GetEmbedBuilder()
         {
             EmbedBuilder eBuilder = new Discord.EmbedBuilder();
 
-            
             /* Message Author ----------------------------------------------------------------*/
             EmbedAuthorBuilder authorBuilder = new EmbedAuthorBuilder();
             authorBuilder.Name = string.Format("{0}", guild.Name);
