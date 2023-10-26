@@ -25,26 +25,27 @@ namespace DearBot.Services
 
             _handler.Log += LogAsync;
 
-            _client.ShardReady += _client_ShardReady;
+            _client.ShardReady += Ready;
             _client.InteractionCreated += HandleInteraction;
         }
 
         public async Task InitializeAsync()
         {
+            _handler.Log += LogAsync;
+            _client.ShardReady += Ready;
+
             await _handler.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+
+            _client.InteractionCreated += HandleInteraction;
         }
 
         private async Task LogAsync(LogMessage log) => Console.WriteLine(log);
 
-        private async Task _client_ShardReady(DiscordSocketClient arg)
+        private async Task Ready(DiscordSocketClient arg)
         {
             // Context & Slash commands can be automatically registered, but this process needs to happen after the client enters the READY state.
             // Since Global Commands take around 1 hour to register, we should use a test guild to instantly update and test our commands.
-#if DEBUG
-                await _handler.RegisterCommandsToGuildAsync(_configuration.GetValue<ulong>("testGuild"), true);
-#else
             await _handler.RegisterCommandsGloballyAsync(true);
-#endif
         }
 
         private async Task HandleInteraction(SocketInteraction interaction)
@@ -65,7 +66,7 @@ namespace DearBot.Services
 
                 // Execute the incoming command.
                 var result = await _handler.ExecuteCommandAsync(interactionContext, _services);
-
+                
                 if (!result.IsSuccess)
                     switch (result.Error)
                     {

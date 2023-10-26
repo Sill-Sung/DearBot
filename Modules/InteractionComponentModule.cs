@@ -41,5 +41,12 @@ namespace DearBot.Modules
             if ((await Context.Interaction.Channel.GetMessagesAsync().Flatten().Where(x => x.Author.IsBot).AnyAsync()) == true)
                 await ButtonClearYesPress();
         }
+
+        [ComponentInteraction("clear_no")]
+        public async Task ButtonClearNoPress()
+        {
+            await Context.Interaction.Message.DeleteAsync();
+
+        }
     }
 }

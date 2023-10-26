@@ -75,18 +75,19 @@ namespace DearBot
             }
         }
 
-        private ServiceProvider ConfigureServices(IConfiguration config) => new ServiceCollection()
-                                                        .AddSingleton(config)
-                                                        .AddSingleton(new DiscordShardedClient(_socketConfig))
-                                                        .AddSingleton<CommandService>()
-                                                        .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
-                                                        .AddSingleton<CommandHandlingService>()
-                                                        .AddSingleton<InteractionHandler>()
-                                                        .BuildServiceProvider();
+        private ServiceProvider ConfigureServices(IConfiguration config)
+            => new ServiceCollection().AddSingleton(config)
+                                      .AddSingleton(new DiscordShardedClient(_socketConfig))
+                                      .AddSingleton<CommandService>()
+                                      .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordShardedClient>()))
+                                      .AddSingleton<CommandHandlingService>()
+                                      .AddSingleton<InteractionHandler>()
+                                      .BuildServiceProvider();
 
         private Task ShardClients_Log(LogMessage log)
         {
             Console.WriteLine(log.ToString());
+
             return Task.CompletedTask;
         }
 

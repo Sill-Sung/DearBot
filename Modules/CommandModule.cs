@@ -1,6 +1,8 @@
 ﻿using Discord.Commands;
 using Discord.WebSocket;
 
+using DearBot.Message;
+
 namespace DearBot.Modules
 {
     public class CommandModule : ModuleBase<ShardedCommandContext>
@@ -26,20 +28,25 @@ namespace DearBot.Modules
         [Command("clear")]
         public async Task ClearDM()
         {
-            if (Context.Channel is SocketDMChannel)
+            if (Context.Channel is SocketDMChannel && Context.User.IsBot)
                 return;
 
-            DearBot.Message.MessageClear messageClear = new Message.MessageClear(Context.Client, Context.Message, Context.Guild);
+            if (Context.Guild.Users.Where(x => x.Id == Context.User.Id).ToList()
+                                   .Where(x => x.GuildPermissions.Has(Discord.GuildPermission.Administrator)).ToList().Count == 0)
+                return;
+
+            MessageClear messageClear = new MessageClear(Context.Client, Context.Message, Context.Guild);
             await messageClear.SendMessage();
+            await Context.Message.DeleteAsync();
         }
 
         [Command("test")]
         public async Task test()
         {
-            if (Context.Channel is SocketDMChannel)
+            if (Context.Channel is SocketDMChannel && Context.User.IsBot)
                 return;
 
-            DearBot.Message.MessageWelcome messageWelcome = new DearBot.Message.MessageWelcome(Context.Client, Context.Message, Context.Guild);
+            MessageWelcome messageWelcome = new MessageWelcome(Context.Client, Context.Message, Context.Guild);
             await messageWelcome.SendMessage();
         }
     }

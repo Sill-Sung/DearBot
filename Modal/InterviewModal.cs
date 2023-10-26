@@ -10,6 +10,7 @@ using Discord.WebSocket;
 using Discord.Interactions;
 
 using DearBot.Data;
+using DearBot.Utils;
 
 namespace DearBot.Modal
 {
@@ -40,10 +41,10 @@ namespace DearBot.Modal
             /* Message Title -----------------------------------------------------------------*/
             StringBuilder sb_embedTitle = new StringBuilder();
             sb_embedTitle.Append("클랜 가입 면접 신청이 완료되었습니다.");
-
+            
             /* Message Description -----------------------------------------------------------*/
             StringBuilder sb_embedDesc = new StringBuilder();
-            sb_embedDesc.Append($"정상적으로 {context.User.Mention}({context.User.Username})님이 입력하신 내용을 관리자 분들께 전달했어요!").Append(Environment.NewLine);
+            sb_embedDesc.Append($"정상적으로 {context.User.Mention}({MarkDown.EscapeMarkDown(context.User.Username)})님이 입력하신 내용을 관리자 분들께 전달했어요!").Append(Environment.NewLine);
             sb_embedDesc.Append($"별도의 문의 사항이나, 변경 사항이 있다면 언제든지 클랜 관리자분들께 DM 보내시면 됩니다!").Append(Environment.NewLine).Append(Environment.NewLine);
             sb_embedDesc.Append("< 관리자 목록 >").Append(Environment.NewLine);
 
@@ -60,7 +61,7 @@ namespace DearBot.Modal
                 }
             }
 
-            dic_adminUsers.ToList().ToList().ForEach(x => sb_embedDesc.Append($"  {x.Key}({x.Value})").Append(Environment.NewLine));
+            dic_adminUsers.ToList().ToList().ForEach(x => sb_embedDesc.Append($"  {x.Key}({MarkDown.EscapeMarkDown(x.Value)})").Append(Environment.NewLine));
 
             /* Message Fields ----------------------------------------------------------------*/
             EmbedFieldBuilder fBuild_day = new EmbedFieldBuilder();
@@ -111,7 +112,7 @@ namespace DearBot.Modal
 
             // Message Description -----------------------------------------------------------
             StringBuilder sb_embedDesc = new StringBuilder();
-            sb_embedDesc.Append($"{context.User.Mention}({context.User.Username})님이 클랜 가입 신청하셨습니다.");
+            sb_embedDesc.Append($"{context.User.Mention}({MarkDown.EscapeMarkDown(context.User.Username)})님이 클랜 가입 신청하셨습니다.");
 
             // Message Fields ----------------------------------------------------------------
             EmbedFieldBuilder fBuild_day = new EmbedFieldBuilder();
